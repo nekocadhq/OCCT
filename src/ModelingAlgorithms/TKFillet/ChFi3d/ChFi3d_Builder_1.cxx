@@ -79,13 +79,36 @@ static void ReorderFaces(TopoDS_Face&         theF1,
     return;
   }
 
-  // Loop until find <theF1> or <theF2>
+  // Loop until find <theF1> or <theF2>.
+  // The step depends only on <PrevFace> and <PrevEdge>, so when the walk comes back to a face
+  // with the same edge, it can not find <theF1> or <theF2>, and it would never end. This occurs
+  // at an edge with more than two faces, or at a face with no other edge at the vertex. Then
+  // the walk stops, and the faces keep their order.
   TopoDS_Edge PrevEdge = thePrevEdge;
   TopoDS_Edge CurEdge;
   TopoDS_Face PrevFace = theFirstFace;
   TopoDS_Face CurFace;
+  NCollection_IndexedDataMap<TopoDS_Shape, NCollection_List<TopoDS_Shape>, TopTools_ShapeMapHasher>
+    aVisited; // the face of each step, and the edges that the walk came over into it
   for (;;)
   {
+    if (NCollection_List<TopoDS_Shape>* aCameOver = aVisited.ChangeSeek(PrevFace))
+    {
+      for (const auto& anEdge : *aCameOver)
+      {
+        if (anEdge.IsSame(PrevEdge))
+        {
+          return;
+        }
+      }
+      aCameOver->Append(PrevEdge);
+    }
+    else
+    {
+      NCollection_List<TopoDS_Shape> aCameOverNew;
+      aCameOverNew.Append(PrevEdge);
+      aVisited.Add(PrevFace, aCameOverNew);
+    }
     NCollection_IndexedDataMap<TopoDS_Shape,
                                NCollection_List<TopoDS_Shape>,
                                TopTools_ShapeMapHasher>
