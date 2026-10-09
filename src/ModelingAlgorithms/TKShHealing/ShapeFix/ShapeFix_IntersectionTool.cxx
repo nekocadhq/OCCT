@@ -1024,6 +1024,32 @@ bool ShapeFix_IntersectionTool::FindVertAndSplitEdge(
   return false;
 }
 
+namespace
+{
+//! The 3D range of an edge and the range of its pcurve on a face.
+struct EdgeRanges
+{
+  double First3d = 0.;
+  double Last3d  = 0.;
+  double First2d = 0.;
+  double Last2d  = 0.;
+
+  bool operator==(const EdgeRanges& theOther) const
+  {
+    return First3d == theOther.First3d && Last3d == theOther.Last3d && First2d == theOther.First2d
+           && Last2d == theOther.Last2d;
+  }
+};
+
+EdgeRanges edgeRanges(const TopoDS_Edge& theEdge, const TopoDS_Face& theFace)
+{
+  EdgeRanges aRanges;
+  BRep_Tool::Range(theEdge, aRanges.First3d, aRanges.Last3d);
+  BRep_Tool::Range(theEdge, theFace, aRanges.First2d, aRanges.Last2d);
+  return aRanges;
+}
+} // namespace
+
 //=================================================================================================
 
 bool ShapeFix_IntersectionTool::FixSelfIntersectWire(occ::handle<ShapeExtend_WireData>& sewd,
@@ -1832,7 +1858,8 @@ bool ShapeFix_IntersectionTool::FixSelfIntersectWire(occ::handle<ShapeExtend_Wir
 
 //=================================================================================================
 
-bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face& face) const
+bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face&                 face,
+                                                     const Message_ProgressRange& theProgress) const
 {
   if (myContext.IsNull() || face.IsNull())
   {
@@ -1907,6 +1934,8 @@ bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face& face) const
       int  NbModif      = 0;
       int  nbReplaced   = 0;     // gka 06.09.04
       bool hasModifWire = false; // gka 06.09.04
+      // The retries of one pair of edges in a row that did not change their ranges.
+      int aNbIdleRetry = 0;
       for (int num1 = 1; num1 <= sewd1->NbEdges() && NbModif < 30; num1++)
       {
         // for each edge from first wire
@@ -1914,6 +1943,10 @@ bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face& face) const
 
         for (int num2 = 1; num2 <= sewd2->NbEdges() && NbModif < 30; num2++)
         {
+          if (theProgress.UserBreak())
+          {
+            return false;
+          }
           // for each edge from second wire
           TopoDS_Edge edge2 = sewd2->Edge(num2);
           if (edge1.IsSame(edge2))
@@ -2064,6 +2097,10 @@ bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face& face) const
                 gp_Pnt                     Pnt12  = GetPointOnEdge(edge1, sas, C1, p12);
                 gp_Pnt                     Pnt21  = GetPointOnEdge(edge2, sas, C2, p21);
                 gp_Pnt                     Pnt22  = GetPointOnEdge(edge2, sas, C2, p22);
+
+                // the ranges before the cuts, to see if a cut changed them
+                const EdgeRanges aRanges1Before = edgeRanges(edge1, face);
+                const EdgeRanges aRanges2Before = edgeRanges(edge2, face);
 
                 // analysis for edge1
                 TopoDS_Vertex V1      = sae.FirstVertex(edge1);
@@ -2220,10 +2257,26 @@ bool ShapeFix_IntersectionTool::FixIntersectingWires(TopoDS_Face& face) const
 
                 if (IsModified1 || IsModified2)
                 {
+                  hasModifWire = true; // gka 06.09.04
+                  // CutEdge can give true and change no range (an edge that is not same
+                  // parameter, on a trimmed pcurve that is not a line). The retry then gives the
+                  // same intersection again, with no end. Retry at most twice with no change.
+                  if (edgeRanges(edge1, face) == aRanges1Before
+                      && edgeRanges(edge2, face) == aRanges2Before)
+                  {
+                    if (++aNbIdleRetry > 2)
+                    {
+                      aNbIdleRetry = 0;
+                      continue;
+                    }
+                  }
+                  else
+                  {
+                    aNbIdleRetry = 0;
+                  }
                   // necessary to make intersect with the same pair of the edges once again with
                   // modified ranges
                   num2--;
-                  hasModifWire = true; // gka 06.09.04
                   continue;
                 }
                 else

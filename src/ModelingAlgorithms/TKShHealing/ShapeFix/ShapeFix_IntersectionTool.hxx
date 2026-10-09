@@ -16,6 +16,7 @@
 #ifndef _ShapeFix_IntersectionTool_HeaderFile
 #define _ShapeFix_IntersectionTool_HeaderFile
 
+#include <Message_ProgressRange.hxx>
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -72,7 +73,11 @@ public:
                                             int&                               NbCut,
                                             int&                               NbRemoved) const;
 
-  Standard_EXPORT bool FixIntersectingWires(TopoDS_Face& face) const;
+  //! Splits and cuts the edges where the wires of the face intersect. Stops and gives false
+  //! when theProgress signals a user break.
+  Standard_EXPORT bool FixIntersectingWires(
+    TopoDS_Face&                 face,
+    const Message_ProgressRange& theProgress = Message_ProgressRange()) const;
 
 private:
   Standard_EXPORT bool SplitEdge1(

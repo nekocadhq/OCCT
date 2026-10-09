@@ -690,7 +690,7 @@ bool ShapeFix_Face::Perform(const Message_ProgressRange& theProgress)
     }
     if (NeedFix(myFixIntersectingWiresMode))
     {
-      if (FixIntersectingWires())
+      if (FixIntersectingWires(theProgress))
       {
         myStatus |= ShapeExtend::EncodeStatus(ShapeExtend_DONE6);
       }
@@ -2829,10 +2829,10 @@ bool ShapeFix_Face::SplitEdge(
 
 //=================================================================================================
 
-bool ShapeFix_Face::FixIntersectingWires()
+bool ShapeFix_Face::FixIntersectingWires(const Message_ProgressRange& theProgress)
 {
   ShapeFix_IntersectionTool ITool(Context(), Precision(), MaxTolerance());
-  return ITool.FixIntersectingWires(myFace);
+  return ITool.FixIntersectingWires(myFace, theProgress);
 }
 
 //=================================================================================================

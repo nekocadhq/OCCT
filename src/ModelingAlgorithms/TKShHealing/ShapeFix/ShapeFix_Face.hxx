@@ -214,7 +214,8 @@ public:
 
   //! Detects and fixes the special case when face has more than one wire
   //! and this wires have intersection point
-  Standard_EXPORT bool FixIntersectingWires();
+  Standard_EXPORT bool FixIntersectingWires(
+    const Message_ProgressRange& theProgress = Message_ProgressRange());
 
   //! If wire contains two coincidence edges it must be removed
   //! Queries on status after Perform()

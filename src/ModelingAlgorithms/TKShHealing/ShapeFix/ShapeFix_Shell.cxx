@@ -117,12 +117,13 @@ bool ShapeFix_Shell::Perform(const Message_ProgressRange& theProgress)
     // Start progress scope (no need to check if progress exists -- it is safe)
     Message_ProgressScope aPS(theProgress, "Fixing face", aNbFaces);
 
-    for (TopoDS_Iterator iter(S); iter.More() && aPS.More(); iter.Next(), aPS.Next())
+    for (TopoDS_Iterator iter(S); iter.More() && aPS.More(); iter.Next())
     {
       TopoDS_Shape sh      = iter.Value();
       TopoDS_Face  tmpFace = TopoDS::Face(sh);
       myFixFace->Init(tmpFace);
-      if (myFixFace->Perform())
+      // The face gets its part of the range, so a user break also stops a long fix of one face.
+      if (myFixFace->Perform(aPS.Next()))
       {
         status = true;
         myStatus |= ShapeExtend::EncodeStatus(ShapeExtend_DONE1);
