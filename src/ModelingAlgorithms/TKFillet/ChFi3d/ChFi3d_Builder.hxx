@@ -35,6 +35,7 @@
 #include <NCollection_DataMap.hxx>
 #include <TopAbs_Orientation.hxx>
 #include <TopAbs_State.hxx>
+#include <Message_ProgressRange.hxx>
 
 class TopOpeBRepDS_HDataStructure;
 class TopOpeBRepBuild_HBuilder;
@@ -128,7 +129,9 @@ public:
 
   //! general calculation of geometry on all edges,
   //! topologic reconstruction.
-  Standard_EXPORT void Compute();
+  //! It asks theRange for a user break before each stripe, before each corner,
+  //! and before the build of the result. On a break, IsDone() is false.
+  Standard_EXPORT void Compute(const Message_ProgressRange& theRange = Message_ProgressRange());
 
   //! returns True if the computation is success
   Standard_EXPORT bool IsDone() const;
